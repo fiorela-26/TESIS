@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+enum Rol {
+  SUPERADMIN
+  SUPERVISOR
+  TRABAJADOR
+}
+
+enum EstadoPapeleta {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  EN_CAMPO
+  FINALIZADA
+}
+
+enum ResultadoEpp {
+  CONFORME
+  INFRACCION
+}
+
+model Obra {
+  id             Int             @id @default(autoincrement())
+  nombre         String
+  direccion      String?
+  activa         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  usuarios       Usuario[]
+  puntosControl  PuntoControl[]
+
+  @@map("obras")
+}
+
+model PuntoControl {
+  id              Int          @id @default(autoincrement())
+  nombre          String
+  camaraUrl       String?
+  topicMqtt       String?      @unique
+  obraId          Int
+  obra            Obra         @relation(fields: [obraId], references: [id])
+  eventos         EventoEpp[]
+  createdAt       DateTime     @default(now())
+
+  @@index([obraId])
+  @@map("puntos_control")
+}
+
+model Usuario {
+  id                   Int         @id @default(autoincrement())
+  nombre               String
+  email                String      @unique
+  passwordHash         String
+  rol                  Rol
+  activo               Boolean     @default(true)
+  obraId               Int?
+  obra                 Obra?       @relation(fields: [obraId], references: [id])
+  papeletasSolicitadas Papeleta[]  @relation("TrabajadorPapeleta")
+  papeletasAprobadas   Papeleta[]  @relation("AprobadorPapeleta")
+  createdAt            DateTime    @default(now())
+
+  @@index([obraId])
+  @@map("usuarios")
+}
+
+// Evento anónimo: no se guarda ninguna persona, solo foto y hora
+model EventoEpp {
+  id               Int           @id @default(autoincrement())
+  puntoControlId   Int
+  puntoControl     PuntoControl  @relation(fields: [puntoControlId], references: [id])
+  resultado        ResultadoEpp
+  eppFaltantes     String[]
+  fotoUrl          String?
+  fechaHora        DateTime      @default(now())
+
+  @@index([puntoControlId, fechaHora])
+  @@map("eventos_epp")
+}
+
+model Papeleta {
+  id                   Int             @id @default(autoincrement())
+  trabajadorId         Int
+  trabajador           Usuario         @relation("TrabajadorPapeleta", fields: [trabajadorId], references: [id])
+  aprobadorId          Int?
+  aprobador            Usuario?        @relation("AprobadorPapeleta", fields: [aprobadorId], references: [id])
+  tarea                String
+  destino              String
+  horaEstimadaRetorno  DateTime
+  estado               EstadoPapeleta  @default(PENDIENTE)
+  motivoRechazo        String?
+  fechaSolicitud       DateTime        @default(now())
+  fechaSalida          DateTime?
+  fechaRetorno         DateTime?
+  minutosEnCampo       Int?
+
+  @@index([trabajadorId])
+  @@index([estado])
+  @@map("papeletas")
+}
