@@ -1,0 +1,19 @@
+# Entorno virtual y claves del detector
+ia-epp/.venv/
+ia-epp/.env
+
+# Modelos entrenados (pesados; respáldalos en Drive)
+*.pt
+
+# Fotos de evidencia generadas
+backend/uploads/
+
+# Claves y configuración local
+.env
+.env.*
+
+# Dependencias y builds
+node_modules/
+.next/
+dist/
+__pycache__/

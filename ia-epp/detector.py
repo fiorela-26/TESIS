@@ -13,7 +13,9 @@ API_KEY = os.getenv("API_KEY", "")
 PUNTO_CONTROL_ID = int(os.getenv("PUNTO_CONTROL_ID", "1"))
 FUENTE = os.getenv("FUENTE_VIDEO", "0")
 CONFIANZA = float(os.getenv("CONFIANZA", "0.5"))
-ESPERA_SEGUNDOS = 10  # tiempo mínimo entre alertas para no enviar cientos de eventos
+
+ESPERA_SEGUNDOS = 30      # tiempo mínimo entre alertas
+FRAMES_CONFIRMACION = 8   # fotogramas seguidos con infracción antes de alertar
 
 # Clases del modelo que significan infracción -> EPP que falta
 INFRACCIONES = {
@@ -24,6 +26,7 @@ INFRACCIONES = {
 model = YOLO("best.pt")
 cap = cv2.VideoCapture(int(FUENTE) if FUENTE.isdigit() else FUENTE)
 ultimo_envio = 0
+frames_con_infraccion = 0
 
 
 def subir_foto(imagen):
@@ -70,10 +73,19 @@ while True:
     detectadas = {model.names[int(c)] for c in resultado.boxes.cls}
     faltantes = sorted({INFRACCIONES[n] for n in detectadas if n in INFRACCIONES})
 
+    if faltantes:
+        frames_con_infraccion += 1
+    else:
+        frames_con_infraccion = 0
+
     ahora = time.time()
-    if faltantes and ahora - ultimo_envio >= ESPERA_SEGUNDOS:
+    if (
+        frames_con_infraccion >= FRAMES_CONFIRMACION
+        and ahora - ultimo_envio >= ESPERA_SEGUNDOS
+    ):
         enviar_evento(faltantes, subir_foto(imagen))
         ultimo_envio = ahora
+        frames_con_infraccion = 0
 
     cv2.imshow("SystemSafety AI - Detector (q para salir)", imagen)
     if cv2.waitKey(1) & 0xFF == ord("q"):
