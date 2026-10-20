@@ -56,7 +56,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   function salir() {
     cerrarSesion();
-    router.replace("/login");
+    router.replace("/");
   }
 
   return (
